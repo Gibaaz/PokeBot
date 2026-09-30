@@ -1,10 +1,10 @@
-# Handoff do Poll Runner
+# Handoff do PokeBot
 
 Este documento permite retomar o projeto em outro computador ou conversa sem depender do histórico do chat.
 
 ## Objetivo
 
-O Poll Runner e um aplicativo desktop Windows em Electron com dois modulos independentes:
+O PokeBot e um aplicativo desktop Windows em Electron com dois modulos independentes:
 
 1. **Enquetes**: monitora um grupo no WhatsApp Web e vota automaticamente em opcoes da ultima mensagem que combinem com termos configurados.
 2. **Compras**: monitora links cadastrados da Amazon.com.br e, quando encontrar uma oferta dentro do preco maximo, adiciona ao carrinho e abre a revisao do pedido. O pedido final nunca e enviado automaticamente.
@@ -28,9 +28,9 @@ npm run build
 
 - `npm start`: inicia o aplicativo Electron para desenvolvimento.
 - `npm run check`: valida a sintaxe de todos os scripts relevantes.
-- `npm run build`: gera o executavel portatil em `release\Poll Runner 1.0.0.exe`.
+- `npm run build`: gera o executavel portatil em `release\PokeBot 1.0.0.exe`.
 
-Feche todos os processos `Poll Runner` antes de rodar `npm run build`; caso contrario, o Windows bloqueia a substituicao do executavel.
+Feche todos os processos `PokeBot` antes de rodar `npm run build`; caso contrario, o Windows bloqueia a substituicao do executavel.
 
 ## Estrutura
 

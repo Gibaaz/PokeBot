@@ -1,14 +1,16 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { PollBot, appRoot } from './bot.js';
 import { ProductMonitor } from './product-monitor.js';
 
 let configPath;
 let productsPath;
+let alertConfigPath;
 let config = { groupName: '', keywords: [], scanIntervalMs: 250 };
 let products = [];
+let alertConfig = { enabled: true, sound: 'alarm' };
 let mainWindow;
 let isQuitting = false;
 
@@ -83,10 +85,47 @@ function saveProducts() {
   fs.writeFileSync(productsPath, `${JSON.stringify(products, null, 2)}\n`);
 }
 
+function normalizeAlertConfig(nextConfig) {
+  return {
+    enabled: nextConfig?.enabled !== false,
+    sound: ['alarm', 'double', 'single', 'rizz', 'custom'].includes(nextConfig?.sound) ? nextConfig.sound : 'alarm',
+  };
+}
+
+function readAlertConfig() {
+  try {
+    return normalizeAlertConfig(JSON.parse(fs.readFileSync(alertConfigPath, 'utf8')));
+  } catch {
+    return { enabled: true, sound: 'alarm' };
+  }
+}
+
+function saveAlertConfig(nextConfig) {
+  alertConfig = normalizeAlertConfig(nextConfig);
+  fs.writeFileSync(alertConfigPath, `${JSON.stringify(alertConfig, null, 2)}\n`);
+  return alertConfig;
+}
+
 const logs = [];
 const productLogs = [];
 let bot;
 let productMonitor;
+
+function playAvailabilitySound() {
+  if (!alertConfig.enabled) return;
+  const patterns = {
+    alarm: [0, 180, 360, 720, 900, 1080],
+    double: [0, 220],
+    single: [0],
+  };
+  if (!patterns[alertConfig.sound]) {
+    mainWindow?.webContents.send('products:play-alert', { sound: alertConfig.sound });
+    return;
+  }
+  patterns[alertConfig.sound].forEach((delay) => {
+    setTimeout(() => shell.beep(), delay);
+  });
+}
 
 function createBot() {
   bot = new PollBot((entry) => {
@@ -100,6 +139,7 @@ function createProductMonitor() {
   productMonitor = new ProductMonitor((entry) => {
     productLogs.unshift(entry);
     productLogs.splice(100);
+    if (entry.state === 'available') playAvailabilitySound();
     mainWindow?.webContents.send('products:update', { state: productMonitor.state, products, logs: productLogs });
   }, (nextProducts) => {
     products = nextProducts;
@@ -120,6 +160,7 @@ function createWindow() {
       preload: path.join(import.meta.dirname, 'preload.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
+      autoplayPolicy: 'no-user-gesture-required',
     },
   });
   mainWindow.loadFile(path.join(appRoot, 'public', 'index.html'));
@@ -141,8 +182,10 @@ async function quitApp() {
 app.whenReady().then(() => {
   configPath = path.join(app.getPath('userData'), 'config.json');
   productsPath = path.join(app.getPath('userData'), 'products.json');
+  alertConfigPath = path.join(app.getPath('userData'), 'alert-config.json');
   config = fs.existsSync(configPath) ? readConfig() : readConfig(path.join(appRoot, 'config.example.json'));
   products = readProducts();
+  alertConfig = readAlertConfig();
   createBot();
   createProductMonitor();
   createWindow();
@@ -164,7 +207,8 @@ ipcMain.handle('bot:stop', async () => {
   await bot.stop();
   return { state: 'stopped' };
 });
-ipcMain.handle('products:status', () => ({ state: productMonitor.state, products, logs: productLogs }));
+ipcMain.handle('products:status', () => ({ state: productMonitor.state, products, logs: productLogs, alertConfig }));
+ipcMain.handle('products:save-alert-config', (_event, nextConfig) => ({ alertConfig: saveAlertConfig(nextConfig) }));
 ipcMain.handle('products:add', (_event, input) => {
   if (productMonitor.state !== 'stopped') throw new Error('Pare o monitor antes de alterar a lista.');
   const product = canonicalProduct(input);

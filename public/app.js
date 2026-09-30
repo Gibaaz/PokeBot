@@ -17,14 +17,16 @@ const productsStatus = document.querySelector('#products-status');
 const productsStart = document.querySelector('#products-start');
 const productsStop = document.querySelector('#products-stop');
 const productsNote = document.querySelector('#products-note');
+const alertEnabled = document.querySelector('#alert-enabled');
+const alertSound = document.querySelector('#alert-sound');
 let terms = [];
 let loaded = false;
 let configLocked = false;
 let products = [];
 let productsLoaded = false;
 let productsLocked = false;
-let alertAudio;
-const alertedProducts = new Set();
+let alertSettingsLoaded = false;
+let customAlertAudio;
 
 const viewMeta = {
   'polls-view': ['Enquetes', 'Monitor e voto automático no WhatsApp.'],
@@ -136,26 +138,21 @@ function renderProductLogs(logs) {
   productEvents.innerHTML = logs.slice(0, 5).map((entry) => `<article class="event ${entry.state}"><i class="event-mark"></i><div><p>${escapeHtml(entry.message)}</p><time>${new Date(entry.at).toLocaleTimeString('pt-BR')}</time></div></article>`).join('');
 }
 
-function prepareAlertSound() {
-  if (!alertAudio) alertAudio = new AudioContext();
-  return alertAudio.resume();
+function renderAlertConfig(config) {
+  alertEnabled.checked = config.enabled;
+  alertSound.value = config.sound;
+  alertSound.disabled = !config.enabled;
 }
 
-function playAvailabilitySound() {
-  if (!alertAudio) return;
-  const startAt = alertAudio.currentTime;
-  [740, 1047, 740, 1319].forEach((frequency, index) => {
-    const oscillator = alertAudio.createOscillator();
-    const gain = alertAudio.createGain();
-    oscillator.frequency.value = frequency;
-    oscillator.type = 'square';
-    gain.gain.setValueAtTime(0.0001, startAt + index * 0.28);
-    gain.gain.exponentialRampToValueAtTime(0.22, startAt + index * 0.28 + 0.025);
-    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + index * 0.28 + 0.25);
-    oscillator.connect(gain).connect(alertAudio.destination);
-    oscillator.start(startAt + index * 0.28);
-    oscillator.stop(startAt + index * 0.28 + 0.26);
-  });
+function playCustomAlert(sound) {
+  const tracks = {
+    rizz: 'sounds/rizz-sound-effect.mp3',
+    custom: 'sounds/custom-alert.mp3',
+  };
+  if (!tracks[sound]) return;
+  customAlertAudio?.pause();
+  customAlertAudio = new Audio(tracks[sound]);
+  customAlertAudio.play().catch(() => { productsNote.textContent = 'Não foi possível tocar o alerta sonoro.'; });
 }
 
 async function request(url, options) {
@@ -188,6 +185,7 @@ async function refreshProducts() {
   try {
     const data = await window.pollRunner.productsStatus();
     if (!productsLoaded) { products = data.products; productsLoaded = true; }
+    if (!alertSettingsLoaded) { renderAlertConfig(data.alertConfig); alertSettingsLoaded = true; }
     renderProductStatus(data.state);
     renderProducts();
     renderProductLogs(data.logs);
@@ -220,11 +218,18 @@ document.querySelector('#product-add').addEventListener('click', async () => {
 });
 productsStart.addEventListener('click', async () => {
   try {
-    await prepareAlertSound();
     await window.pollRunner.startProducts();
   } catch (error) { productsNote.textContent = error.message; }
 });
 productsStop.addEventListener('click', async () => { await window.pollRunner.stopProducts(); });
+async function saveAlertConfig() {
+  try {
+    const data = await window.pollRunner.saveAlertConfig({ enabled: alertEnabled.checked, sound: alertSound.value });
+    renderAlertConfig(data.alertConfig);
+  } catch (error) { productsNote.textContent = error.message; }
+}
+alertEnabled.addEventListener('change', saveAlertConfig);
+alertSound.addEventListener('change', saveAlertConfig);
 
 refresh();
 refreshProducts();
@@ -234,12 +239,8 @@ window.pollRunner.onUpdate(({ state, logs }) => {
 });
 window.pollRunner.onProductsUpdate((data) => {
   products = data.products;
-  const event = data.logs[0];
-  if (event?.state === 'available' && !alertedProducts.has(event.at)) {
-    alertedProducts.add(event.at);
-    playAvailabilitySound();
-  }
   renderProductStatus(data.state);
   renderProducts();
   renderProductLogs(data.logs);
 });
+window.pollRunner.onAlert(({ sound }) => playCustomAlert(sound));

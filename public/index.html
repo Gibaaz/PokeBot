@@ -3,16 +3,16 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Poll Runner</title>
+    <title>PokeBot</title>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body>
     <main class="app-shell">
       <aside class="sidebar">
         <div class="sidebar-brand">
-          <div class="brand-mark" aria-hidden="true">P</div>
+          <img class="brand-mark" src="pokebot-icon.svg" alt="">
           <div>
-            <strong>Poll Runner</strong>
+            <strong>PokeBot</strong>
             <span>Automação local</span>
           </div>
         </div>
@@ -103,6 +103,13 @@
               <button class="button secondary" id="product-add">Adicionar</button>
             </div>
             <p class="shopping-note" id="products-note">A Amazon pode pedir login ou verificação manual. O pedido final nunca é enviado automaticamente.</p>
+            <details class="alert-settings">
+              <summary>Configurar alertas</summary>
+              <div class="alert-settings-body" aria-label="Configuração de alertas sonoros">
+                <label class="alert-toggle"><input id="alert-enabled" type="checkbox" checked> <span>Ativar alerta sonoro</span></label>
+                <label class="alert-sound"><span>Som</span><select id="alert-sound"><option value="alarm">Alarme</option><option value="double">Bipe duplo</option><option value="single">Bipe simples</option><option value="rizz">Rizz</option><option value="custom">Som personalizado 2</option></select></label>
+              </div>
+            </details>
             <div class="product-list" id="product-list"></div>
           </section>
           <aside class="panel product-activity">

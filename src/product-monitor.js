@@ -114,27 +114,14 @@ export class ProductMonitor {
         return;
       }
 
-      let cartButton = this.page.locator('#add-to-cart-button, input[name*="submit.add-to-cart"]').first();
-      let offerText = '';
+      const cartButton = this.page.locator('#add-to-cart-button, input[name*="submit.add-to-cart"]').first();
       if (!await cartButton.isVisible().catch(() => false)) {
-        const offersLink = this.page.locator('a[href*="offer-listing"], a:has-text("opções de compra"), a:has-text("opcoes de compra")').first();
-        if (!await offersLink.isVisible().catch(() => false)) {
-          this.updateProduct(product.id, { state: 'unavailable', lastCheck: new Date().toISOString(), detail: 'Sem oferta disponível.' });
-          this.emit('waiting', `${product.asin}: sem estoque elegível.`);
-          return;
-        }
-        await offersLink.click();
-        await this.page.waitForLoadState('domcontentloaded');
-        cartButton = this.page.locator('#add-to-cart-button, input[name*="submit.add-to-cart"]').first();
-        if (!await cartButton.isVisible().catch(() => false)) {
-          this.updateProduct(product.id, { state: 'unavailable', lastCheck: new Date().toISOString(), detail: 'Ofertas encontradas, mas sem carrinho disponível.' });
-          this.emit('waiting', `${product.asin}: oferta ainda não pode ser adicionada.`);
-          return;
-        }
-        offerText = await cartButton.locator('xpath=ancestor-or-self::*[contains(@class,"offer")][1]').innerText().catch(() => '');
+        this.updateProduct(product.id, { state: 'unavailable', lastCheck: new Date().toISOString(), detail: 'A oferta principal deste link está indisponível.' });
+        this.emit('waiting', `${product.asin}: oferta principal sem estoque.`);
+        return;
       }
 
-      const priceText = offerText || await this.page.locator('.a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice').first().innerText().catch(() => '');
+      const priceText = await this.page.locator('.a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice').first().innerText().catch(() => '');
       const price = priceFromText(priceText);
       if (price === null) {
         this.updateProduct(product.id, { state: 'attention', lastCheck: new Date().toISOString(), detail: 'Preço não identificado. Revise a oferta manualmente.' });

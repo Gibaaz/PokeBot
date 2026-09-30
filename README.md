@@ -1,4 +1,4 @@
-# Poll Runner
+# PokeBot
 
 Aplicativo desktop para monitorar enquetes de um grupo no WhatsApp Web. Ele analisa apenas a ultima mensagem visivel e vota uma unica vez nas opcoes compatíveis com os termos configurados.
 

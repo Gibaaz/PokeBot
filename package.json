@@ -19,7 +19,8 @@
   },
   "build": {
     "appId": "com.giovanni.pollrunner",
-    "productName": "Poll Runner",
+    "productName": "PokeBot",
+    "icon": "public/pokebot-icon.png",
     "directories": {
       "output": "release"
     },
