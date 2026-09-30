@@ -6,8 +6,10 @@ function priceFromText(text) {
   return match ? Number(match[1].replace(/\./g, '').replace(',', '.')) : null;
 }
 
-function isAttentionPage(text) {
-  return /digite os caracteres|captcha|faça login|faca login|sign in/i.test(text);
+function attentionReason(text) {
+  if (/digite os caracteres|captcha/i.test(text)) return 'CAPTCHA';
+  if (/faça login|faca login|sign in/i.test(text)) return 'login';
+  return null;
 }
 
 export class ProductMonitor {
@@ -24,9 +26,9 @@ export class ProductMonitor {
     this.runId = 0;
   }
 
-  emit(state, message) {
+  emit(state, message, details = {}) {
     if (['starting', 'running', 'attention', 'stopped', 'error'].includes(state)) this.state = state;
-    this.onUpdate({ state, message, at: new Date().toISOString() });
+    this.onUpdate({ state, message, at: new Date().toISOString(), ...details });
   }
 
   updateProduct(id, changes) {
@@ -108,9 +110,10 @@ export class ProductMonitor {
       const pageText = await this.page.locator('body').innerText({ timeout: 10_000 });
       const productTitle = await this.page.locator('#productTitle').innerText().then((text) => text.trim()).catch(() => product.title);
       if (productTitle && productTitle !== product.title) this.updateProduct(product.id, { title: productTitle });
-      if (isAttentionPage(pageText)) {
-        this.updateProduct(product.id, { state: 'attention', lastCheck: new Date().toISOString(), detail: 'Faça login ou resolva a verificação da Amazon.' });
-        this.emit('attention', 'A Amazon precisa de login ou verificação manual.');
+      const reason = attentionReason(pageText);
+      if (reason) {
+        this.updateProduct(product.id, { state: 'attention', lastCheck: new Date().toISOString(), detail: `A Amazon exige ${reason}.` });
+        this.emit('attention', `${product.asin}: a Amazon exige ${reason}.`, { alert: 'attention' });
         return;
       }
 

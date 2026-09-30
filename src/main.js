@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, Notification, shell } from 'electron';
 import { PollBot, appRoot } from './bot.js';
 import { ProductMonitor } from './product-monitor.js';
 
@@ -88,6 +88,7 @@ function saveProducts() {
 function normalizeAlertConfig(nextConfig) {
   return {
     enabled: nextConfig?.enabled !== false,
+    notifications: nextConfig?.notifications !== false,
     sound: ['alarm', 'double', 'single', 'rizz', 'custom'].includes(nextConfig?.sound) ? nextConfig.sound : 'alarm',
   };
 }
@@ -96,7 +97,7 @@ function readAlertConfig() {
   try {
     return normalizeAlertConfig(JSON.parse(fs.readFileSync(alertConfigPath, 'utf8')));
   } catch {
-    return { enabled: true, sound: 'alarm' };
+    return { enabled: true, notifications: true, sound: 'alarm' };
   }
 }
 
@@ -127,6 +128,18 @@ function playAvailabilitySound() {
   });
 }
 
+function playAttentionSound() {
+  if (!alertConfig.enabled) return;
+  [0, 180, 360, 720, 900, 1080].forEach((delay) => {
+    setTimeout(() => shell.beep(), delay);
+  });
+}
+
+function showNotification(title, body) {
+  if (!alertConfig.notifications) return;
+  new Notification({ title, body, icon: path.join(appRoot, 'public', 'pokebot-icon.png') }).show();
+}
+
 function createBot() {
   bot = new PollBot((entry) => {
   logs.unshift(entry);
@@ -139,7 +152,14 @@ function createProductMonitor() {
   productMonitor = new ProductMonitor((entry) => {
     productLogs.unshift(entry);
     productLogs.splice(100);
-    if (entry.state === 'available') playAvailabilitySound();
+    if (entry.state === 'available') {
+      playAvailabilitySound();
+      showNotification('PokeBot: produto disponível', entry.message);
+    }
+    if (entry.alert === 'attention') {
+      playAttentionSound();
+      showNotification('PokeBot: atenção necessária', entry.message);
+    }
     mainWindow?.webContents.send('products:update', { state: productMonitor.state, products, logs: productLogs });
   }, (nextProducts) => {
     products = nextProducts;
@@ -209,6 +229,10 @@ ipcMain.handle('bot:stop', async () => {
 });
 ipcMain.handle('products:status', () => ({ state: productMonitor.state, products, logs: productLogs, alertConfig }));
 ipcMain.handle('products:save-alert-config', (_event, nextConfig) => ({ alertConfig: saveAlertConfig(nextConfig) }));
+ipcMain.handle('products:test-alert', () => {
+  playAvailabilitySound();
+  return { alertConfig };
+});
 ipcMain.handle('products:add', (_event, input) => {
   if (productMonitor.state !== 'stopped') throw new Error('Pare o monitor antes de alterar a lista.');
   const product = canonicalProduct(input);

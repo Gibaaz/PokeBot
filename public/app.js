@@ -18,7 +18,9 @@ const productsStart = document.querySelector('#products-start');
 const productsStop = document.querySelector('#products-stop');
 const productsNote = document.querySelector('#products-note');
 const alertEnabled = document.querySelector('#alert-enabled');
+const alertNotifications = document.querySelector('#alert-notifications');
 const alertSound = document.querySelector('#alert-sound');
+const alertTest = document.querySelector('#alert-test');
 let terms = [];
 let loaded = false;
 let configLocked = false;
@@ -140,6 +142,7 @@ function renderProductLogs(logs) {
 
 function renderAlertConfig(config) {
   alertEnabled.checked = config.enabled;
+  alertNotifications.checked = config.notifications;
   alertSound.value = config.sound;
   alertSound.disabled = !config.enabled;
 }
@@ -224,12 +227,16 @@ productsStart.addEventListener('click', async () => {
 productsStop.addEventListener('click', async () => { await window.pollRunner.stopProducts(); });
 async function saveAlertConfig() {
   try {
-    const data = await window.pollRunner.saveAlertConfig({ enabled: alertEnabled.checked, sound: alertSound.value });
+    const data = await window.pollRunner.saveAlertConfig({ enabled: alertEnabled.checked, notifications: alertNotifications.checked, sound: alertSound.value });
     renderAlertConfig(data.alertConfig);
   } catch (error) { productsNote.textContent = error.message; }
 }
 alertEnabled.addEventListener('change', saveAlertConfig);
+alertNotifications.addEventListener('change', saveAlertConfig);
 alertSound.addEventListener('change', saveAlertConfig);
+alertTest.addEventListener('click', async () => {
+  try { await window.pollRunner.testAlert(); } catch (error) { productsNote.textContent = error.message; }
+});
 
 refresh();
 refreshProducts();

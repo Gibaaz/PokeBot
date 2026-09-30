@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('pollRunner', {
   onUpdate: (callback) => ipcRenderer.on('bot:update', (_event, data) => callback(data)),
   productsStatus: () => ipcRenderer.invoke('products:status'),
   saveAlertConfig: (config) => ipcRenderer.invoke('products:save-alert-config', config),
+  testAlert: () => ipcRenderer.invoke('products:test-alert'),
   addProduct: (product) => ipcRenderer.invoke('products:add', product),
   removeProduct: (id) => ipcRenderer.invoke('products:remove', id),
   startProducts: () => ipcRenderer.invoke('products:start'),
