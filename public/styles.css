@@ -90,6 +90,7 @@ output { color: #a1a1aa; font-size: 11px; }
 .alert-toggle input { width: 14px; height: 14px; flex: 0 0 14px; margin: 0; padding: 0; accent-color: #fafafa; }
 .alert-sound select { height: 30px; }
 .product-form { display: grid; grid-template-columns: minmax(0, 1fr) 150px 130px auto; gap: 8px; padding: 18px 20px 0; }
+.product-form #product-custom-interval { grid-column: 3; }
 select { height: 36px; border: 1px solid #3f3f46; border-radius: 6px; padding: 0 9px; color: #d4d4d8; background: #09090b; font-size: 12px; }
 .shopping-note { margin: 9px 20px 16px; color: #a1a1aa; font-size: 11px; }
 .product-list { border-top: 1px solid #27272a; }

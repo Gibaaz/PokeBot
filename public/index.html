@@ -99,7 +99,9 @@
                 <option value="60000">A cada 1 min</option>
                 <option value="120000">A cada 2 min</option>
                 <option value="300000">A cada 5 min</option>
+                <option value="custom">Personalizado</option>
               </select>
+              <input id="product-custom-interval" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="Minutos" hidden>
               <button class="button secondary" id="product-add">Adicionar</button>
             </div>
             <p class="shopping-note" id="products-note">A Amazon pode pedir login ou verificação manual. O pedido final nunca é enviado automaticamente.</p>

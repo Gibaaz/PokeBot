@@ -56,13 +56,15 @@ function canonicalProduct(input) {
   if (!asin) throw new Error('Não foi possível identificar o ASIN no link do produto.');
   const maxPrice = Number(String(input.maxPrice).replace(',', '.'));
   if (!Number.isFinite(maxPrice) || maxPrice <= 0) throw new Error('Informe um preço máximo válido.');
+  const intervalMs = Number(input.intervalMs);
+  if (!Number.isFinite(intervalMs) || intervalMs < 60_000) throw new Error('Informe um intervalo de ao menos 1 minuto.');
   return {
     id: randomUUID(),
     asin,
     title: input.title?.trim() || asin,
     url: `https://www.amazon.com.br/dp/${asin}`,
     maxPrice,
-    intervalMs: Math.max(60_000, Number(input.intervalMs) || 60_000),
+    intervalMs,
     autoCheckout: input.autoCheckout !== false,
     enabled: true,
     state: 'waiting',

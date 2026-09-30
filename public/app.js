@@ -11,6 +11,7 @@ const stop = document.querySelector('#stop');
 const productUrl = document.querySelector('#product-url');
 const productPrice = document.querySelector('#product-price');
 const productInterval = document.querySelector('#product-interval');
+const productCustomInterval = document.querySelector('#product-custom-interval');
 const productList = document.querySelector('#product-list');
 const productEvents = document.querySelector('#product-events');
 const productsStatus = document.querySelector('#products-status');
@@ -110,12 +111,19 @@ function renderProductStatus(state) {
   productUrl.disabled = productsLocked;
   productPrice.disabled = productsLocked;
   productInterval.disabled = productsLocked;
+  productCustomInterval.disabled = productsLocked;
   document.querySelector('#product-add').disabled = productsLocked;
 }
 
 function productState(product) {
   const labels = { waiting: 'Aguardando', unavailable: 'Esgotado', price_high: 'Acima do limite', available: 'Disponível', review: 'Em revisão', attention: 'Atenção', error: 'Erro' };
   return labels[product.state] || product.state;
+}
+
+function syncCustomInterval() {
+  const custom = productInterval.value === 'custom';
+  productCustomInterval.hidden = !custom;
+  productCustomInterval.required = custom;
 }
 
 function renderProductHistory(product) {
@@ -129,7 +137,7 @@ function renderProducts() {
     productList.innerHTML = '<div class="empty-products">Nenhum produto monitorado.</div>';
     return;
   }
-  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></article>`).join('');
+  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span><br><span class="muted">A cada ${Math.round(product.intervalMs / 60_000)} min</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></article>`).join('');
   productList.querySelectorAll('.remove-product').forEach((button) => button.addEventListener('click', async () => {
     try { const data = await window.pollRunner.removeProduct(button.dataset.id); products = data.products; renderProducts(); } catch (error) { productsNote.textContent = error.message; }
   }));
@@ -205,6 +213,7 @@ document.querySelector('#addTerm').addEventListener('click', addTerm);
 document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => selectView(button.dataset.view)));
 termInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') addTerm(); });
 interval.addEventListener('input', () => { intervalValue.textContent = `${interval.value} ms`; });
+productInterval.addEventListener('change', syncCustomInterval);
 document.querySelector('#save').addEventListener('click', async () => {
   try {
     const data = await request('/api/config', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ groupName: groupName.value, keywords: terms, scanIntervalMs: interval.value }) });
@@ -217,10 +226,15 @@ start.addEventListener('click', async () => { try { await request('/api/start', 
 stop.addEventListener('click', async () => { await request('/api/stop', { method: 'POST' }); refresh(); });
 document.querySelector('#product-add').addEventListener('click', async () => {
   try {
-    const data = await window.pollRunner.addProduct({ url: productUrl.value, maxPrice: productPrice.value, intervalMs: productInterval.value });
+    const intervalMs = productInterval.value === 'custom' ? Number(productCustomInterval.value) * 60_000 : productInterval.value;
+    if (productInterval.value === 'custom' && (!Number.isInteger(Number(productCustomInterval.value)) || Number(productCustomInterval.value) < 1)) throw new Error('Informe um intervalo inteiro de ao menos 1 minuto.');
+    const data = await window.pollRunner.addProduct({ url: productUrl.value, maxPrice: productPrice.value, intervalMs });
     products = data.products;
     productUrl.value = '';
     productPrice.value = '';
+    productCustomInterval.value = '';
+    productInterval.value = '60000';
+    syncCustomInterval();
     productsNote.textContent = 'Produto adicionado. O checkout para na revisão do pedido.';
     renderProducts();
   } catch (error) { productsNote.textContent = error.message; }
@@ -246,6 +260,7 @@ alertTest.addEventListener('click', async () => {
 
 refresh();
 refreshProducts();
+syncCustomInterval();
 window.pollRunner.onUpdate(({ state, logs }) => {
   renderStatus(state);
   renderLogs(logs);
