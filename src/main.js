@@ -69,6 +69,7 @@ function canonicalProduct(input) {
     detail: 'Aguardando monitoramento.',
     lastCheck: null,
     price: null,
+    history: [],
   };
 }
 

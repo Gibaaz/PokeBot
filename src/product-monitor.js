@@ -32,7 +32,21 @@ export class ProductMonitor {
   }
 
   updateProduct(id, changes) {
-    this.products = this.products.map((product) => product.id === id ? { ...product, ...changes } : product);
+    this.products = this.products.map((product) => {
+      if (product.id !== id) return product;
+      const nextProduct = { ...product, ...changes };
+      if (!changes.state) return nextProduct;
+      const history = Array.isArray(product.history) ? product.history : [];
+      const entry = {
+        at: changes.lastCheck || new Date().toISOString(),
+        state: nextProduct.state,
+        detail: nextProduct.detail,
+        price: nextProduct.price,
+      };
+      const lastEntry = history[0];
+      const changed = !lastEntry || lastEntry.state !== entry.state || lastEntry.price !== entry.price || lastEntry.detail !== entry.detail;
+      return { ...nextProduct, history: changed ? [entry, ...history].slice(0, 30) : history };
+    });
     this.onProducts(this.products);
   }
 

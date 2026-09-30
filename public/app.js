@@ -118,12 +118,18 @@ function productState(product) {
   return labels[product.state] || product.state;
 }
 
+function renderProductHistory(product) {
+  const history = Array.isArray(product.history) ? product.history : [];
+  if (!history.length) return '<p class="history-empty">O histórico aparece após a primeira verificação.</p>';
+  return history.slice(0, 8).map((entry) => `<p><span>${escapeHtml(productState(entry))}</span>${entry.price === null || entry.price === undefined ? '' : ` R$ ${Number(entry.price).toFixed(2)}`}<time>${new Date(entry.at).toLocaleString('pt-BR')}</time></p>`).join('');
+}
+
 function renderProducts() {
   if (!products.length) {
     productList.innerHTML = '<div class="empty-products">Nenhum produto monitorado.</div>';
     return;
   }
-  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div></article>`).join('');
+  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></article>`).join('');
   productList.querySelectorAll('.remove-product').forEach((button) => button.addEventListener('click', async () => {
     try { const data = await window.pollRunner.removeProduct(button.dataset.id); products = data.products; renderProducts(); } catch (error) { productsNote.textContent = error.message; }
   }));
