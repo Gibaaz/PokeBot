@@ -6,6 +6,15 @@ function priceFromText(text) {
   return match ? Number(match[1].replace(/\./g, '').replace(',', '.')) : null;
 }
 
+function normalizeText(text) {
+  return String(text).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function shippingFromText(text) {
+  if (/frete gr[aá]tis/i.test(text)) return 0;
+  return priceFromText(text);
+}
+
 function attentionReason(text) {
   if (/digite os caracteres|captcha/i.test(text)) return 'CAPTCHA';
   if (/faça login|faca login|sign in/i.test(text)) return 'login';
@@ -42,6 +51,8 @@ export class ProductMonitor {
         state: nextProduct.state,
         detail: nextProduct.detail,
         price: nextProduct.price,
+        seller: nextProduct.seller,
+        shipping: nextProduct.shipping,
       };
       const lastEntry = history[0];
       const changed = !lastEntry || lastEntry.state !== entry.state || lastEntry.price !== entry.price || lastEntry.detail !== entry.detail;
@@ -136,6 +147,33 @@ export class ProductMonitor {
         this.updateProduct(product.id, { state: 'unavailable', lastCheck: new Date().toISOString(), detail: 'A oferta principal deste link está indisponível.' });
         this.emit('waiting', `${product.asin}: oferta principal sem estoque.`);
         return;
+      }
+
+      if (product.sellerFilter || Number.isFinite(product.maxShipping)) {
+        const seller = await this.page.locator('#merchant-info, #sellerProfileTriggerId').first().innerText().then((text) => text.trim()).catch(() => '');
+        const shippingText = await this.page.locator('#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE, #deliveryBlockMessage, #fulfillerInfoFeature_feature_div').first().innerText().catch(() => '');
+        const shipping = shippingFromText(shippingText);
+        this.updateProduct(product.id, { seller: seller || null, shipping });
+        if (product.sellerFilter && !seller) {
+          this.updateProduct(product.id, { state: 'attention', lastCheck: new Date().toISOString(), detail: 'Vendedor não identificado. Revise a oferta manualmente.' });
+          this.emit('attention', `${product.asin}: vendedor não identificado.`);
+          return;
+        }
+        if (product.sellerFilter && !normalizeText(seller).includes(normalizeText(product.sellerFilter))) {
+          this.updateProduct(product.id, { state: 'seller_mismatch', lastCheck: new Date().toISOString(), detail: `Vendedor diferente do filtro: ${seller}.` });
+          this.emit('waiting', `${product.asin}: vendedor diferente do filtro.`);
+          return;
+        }
+        if (Number.isFinite(product.maxShipping) && shipping === null) {
+          this.updateProduct(product.id, { state: 'attention', lastCheck: new Date().toISOString(), detail: 'Frete não identificado. Revise a oferta manualmente.' });
+          this.emit('attention', `${product.asin}: frete não identificado.`);
+          return;
+        }
+        if (Number.isFinite(product.maxShipping) && shipping > product.maxShipping) {
+          this.updateProduct(product.id, { state: 'shipping_high', lastCheck: new Date().toISOString(), shipping, detail: `Frete acima do limite: R$ ${shipping.toFixed(2)}.` });
+          this.emit('waiting', `${product.asin}: frete acima do limite.`);
+          return;
+        }
       }
 
       const priceText = await this.page.locator('.a-price .a-offscreen, #priceblock_ourprice, #priceblock_dealprice').first().innerText().catch(() => '');

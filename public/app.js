@@ -12,6 +12,8 @@ const productUrl = document.querySelector('#product-url');
 const productPrice = document.querySelector('#product-price');
 const productInterval = document.querySelector('#product-interval');
 const productCustomInterval = document.querySelector('#product-custom-interval');
+const productSeller = document.querySelector('#product-seller');
+const productShipping = document.querySelector('#product-shipping');
 const productList = document.querySelector('#product-list');
 const productEvents = document.querySelector('#product-events');
 const productsStatus = document.querySelector('#products-status');
@@ -112,11 +114,13 @@ function renderProductStatus(state) {
   productPrice.disabled = productsLocked;
   productInterval.disabled = productsLocked;
   productCustomInterval.disabled = productsLocked;
+  productSeller.disabled = productsLocked;
+  productShipping.disabled = productsLocked;
   document.querySelector('#product-add').disabled = productsLocked;
 }
 
 function productState(product) {
-  const labels = { waiting: 'Aguardando', unavailable: 'Esgotado', price_high: 'Acima do limite', available: 'Disponível', review: 'Em revisão', attention: 'Atenção', error: 'Erro' };
+  const labels = { waiting: 'Aguardando', unavailable: 'Esgotado', price_high: 'Acima do limite', seller_mismatch: 'Vendedor diferente', shipping_high: 'Frete acima do limite', available: 'Disponível', review: 'Em revisão', attention: 'Atenção', error: 'Erro' };
   return labels[product.state] || product.state;
 }
 
@@ -137,7 +141,7 @@ function renderProducts() {
     productList.innerHTML = '<div class="empty-products">Nenhum produto monitorado.</div>';
     return;
   }
-  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span><br><span class="muted">A cada ${Math.round(product.intervalMs / 60_000)} min</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></article>`).join('');
+  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span><br><span class="muted">A cada ${Math.round(product.intervalMs / 60_000)} min</span>${product.seller ? `<br><span class="muted">${escapeHtml(product.seller)}</span>` : ''}${Number.isFinite(product.shipping) ? `<br><span class="muted">Frete R$ ${product.shipping.toFixed(2)}</span>` : ''}</div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button resume-product" data-id="${product.id}" ${product.state !== 'review' && product.state !== 'attention' ? 'hidden' : ''}>Voltar a monitorar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></article>`).join('');
   productList.querySelectorAll('.remove-product').forEach((button) => button.addEventListener('click', async () => {
     try { const data = await window.pollRunner.removeProduct(button.dataset.id); products = data.products; renderProducts(); } catch (error) { productsNote.textContent = error.message; }
   }));
@@ -228,11 +232,13 @@ document.querySelector('#product-add').addEventListener('click', async () => {
   try {
     const intervalMs = productInterval.value === 'custom' ? Number(productCustomInterval.value) * 60_000 : productInterval.value;
     if (productInterval.value === 'custom' && (!Number.isInteger(Number(productCustomInterval.value)) || Number(productCustomInterval.value) < 1)) throw new Error('Informe um intervalo inteiro de ao menos 1 minuto.');
-    const data = await window.pollRunner.addProduct({ url: productUrl.value, maxPrice: productPrice.value, intervalMs });
+    const data = await window.pollRunner.addProduct({ url: productUrl.value, maxPrice: productPrice.value, intervalMs, sellerFilter: productSeller.value, maxShipping: productShipping.value });
     products = data.products;
     productUrl.value = '';
     productPrice.value = '';
     productCustomInterval.value = '';
+    productSeller.value = '';
+    productShipping.value = '';
     productInterval.value = '60000';
     syncCustomInterval();
     productsNote.textContent = 'Produto adicionado. O checkout para na revisão do pedido.';

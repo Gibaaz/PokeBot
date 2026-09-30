@@ -58,6 +58,10 @@ function canonicalProduct(input) {
   if (!Number.isFinite(maxPrice) || maxPrice <= 0) throw new Error('Informe um preço máximo válido.');
   const intervalMs = Number(input.intervalMs);
   if (!Number.isFinite(intervalMs) || intervalMs < 60_000) throw new Error('Informe um intervalo de ao menos 1 minuto.');
+  const sellerFilter = String(input.sellerFilter || '').trim();
+  const shippingInput = String(input.maxShipping || '').trim();
+  const maxShipping = shippingInput ? Number(shippingInput.replace(',', '.')) : null;
+  if (maxShipping !== null && (!Number.isFinite(maxShipping) || maxShipping < 0)) throw new Error('Informe um frete máximo válido.');
   return {
     id: randomUUID(),
     asin,
@@ -65,6 +69,10 @@ function canonicalProduct(input) {
     url: `https://www.amazon.com.br/dp/${asin}`,
     maxPrice,
     intervalMs,
+    sellerFilter,
+    maxShipping,
+    seller: null,
+    shipping: null,
     autoCheckout: input.autoCheckout !== false,
     enabled: true,
     state: 'waiting',
