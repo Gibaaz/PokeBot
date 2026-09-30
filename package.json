@@ -1,0 +1,36 @@
+{
+  "name": "whatsapp-poll-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monitora enquetes de um grupo no WhatsApp Web e vota em opcoes configuradas.",
+  "type": "module",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "check": "node --check src/bot.js && node --check src/main.js && node --check src/preload.cjs",
+    "build": "electron-builder --win portable"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2"
+  },
+  "devDependencies": {
+    "electron": "^40.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "com.giovanni.pollrunner",
+    "productName": "Poll Runner",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "src/**/*",
+      "public/**/*",
+      "config.example.json",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    }
+  }
+}
