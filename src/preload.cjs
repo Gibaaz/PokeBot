@@ -6,4 +6,11 @@ contextBridge.exposeInMainWorld('pollRunner', {
   start: () => ipcRenderer.invoke('bot:start'),
   stop: () => ipcRenderer.invoke('bot:stop'),
   onUpdate: (callback) => ipcRenderer.on('bot:update', (_event, data) => callback(data)),
+  productsStatus: () => ipcRenderer.invoke('products:status'),
+  addProduct: (product) => ipcRenderer.invoke('products:add', product),
+  removeProduct: (id) => ipcRenderer.invoke('products:remove', id),
+  startProducts: () => ipcRenderer.invoke('products:start'),
+  stopProducts: () => ipcRenderer.invoke('products:stop'),
+  checkoutProduct: (id) => ipcRenderer.invoke('products:checkout', id),
+  onProductsUpdate: (callback) => ipcRenderer.on('products:update', (_event, data) => callback(data)),
 });
