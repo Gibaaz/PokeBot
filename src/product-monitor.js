@@ -87,6 +87,20 @@ export class ProductMonitor {
     await this.checkProduct(product, true);
   }
 
+  resume(id) {
+    const product = this.products.find((item) => item.id === id);
+    if (!product) throw new Error('Produto não encontrado.');
+    this.updateProduct(id, {
+      enabled: true,
+      state: 'waiting',
+      detail: 'Monitoramento retomado.',
+      lastCheck: null,
+      price: null,
+    });
+    if (this.state === 'attention') this.emit('running', 'Monitoramento retomado após atenção manual.');
+    this.emit('waiting', `${product.asin}: monitoramento retomado.`);
+  }
+
   async checkProduct(product, proceedToCheckout) {
     this.emit('checking', `Verificando ${product.asin}.`);
     try {

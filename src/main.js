@@ -192,3 +192,7 @@ ipcMain.handle('products:checkout', async (_event, id) => {
   await productMonitor.checkout(id);
   return { products };
 });
+ipcMain.handle('products:resume', (_event, id) => {
+  productMonitor.resume(id);
+  return { products };
+});

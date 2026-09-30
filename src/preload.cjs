@@ -12,5 +12,6 @@ contextBridge.exposeInMainWorld('pollRunner', {
   startProducts: () => ipcRenderer.invoke('products:start'),
   stopProducts: () => ipcRenderer.invoke('products:stop'),
   checkoutProduct: (id) => ipcRenderer.invoke('products:checkout', id),
+  resumeProduct: (id) => ipcRenderer.invoke('products:resume', id),
   onProductsUpdate: (callback) => ipcRenderer.on('products:update', (_event, data) => callback(data)),
 });
