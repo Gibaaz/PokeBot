@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Poll Runner</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">P</div>
+          <div>
+            <h1>Poll Runner</h1>
+            <p>Monitor de enquetes</p>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="status" id="status"><span></span><strong>Parado</strong></div>
+          <button class="button secondary" id="stop" disabled>Parar</button>
+          <button class="button primary" id="start">Iniciar</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <section class="panel settings">
+          <div class="panel-heading">
+            <div>
+              <h2>Grupo e termos</h2>
+              <p class="panel-description">Defina onde e quando o bot deve votar.</p>
+            </div>
+            <span class="save-note" id="save-note" aria-live="polite"></span>
+          </div>
+
+          <label for="groupName">Grupo do WhatsApp</label>
+          <input id="groupName" autocomplete="off" placeholder="Nome exato do grupo">
+          <p class="hint">O bot só atua com essa conversa aberta.</p>
+
+          <label for="termInput">Termos para votar</label>
+          <div class="add-term">
+            <input id="termInput" autocomplete="off" placeholder="Adicionar termo">
+            <button class="icon-button" id="addTerm" aria-label="Adicionar termo">+</button>
+          </div>
+          <div class="chips" id="chips"></div>
+
+          <div class="interval-heading">
+            <label for="interval">Intervalo de busca</label>
+            <output id="intervalValue">250 ms</output>
+          </div>
+          <input id="interval" class="range" type="range" min="100" max="1000" step="50" value="250">
+          <button class="button save" id="save">Salvar configuração</button>
+        </section>
+
+        <section class="panel activity">
+          <div class="panel-heading">
+            <div>
+              <h2>Últimos eventos</h2>
+              <p class="panel-description">Ações e alertas da sessão atual.</p>
+            </div>
+          </div>
+          <div class="timeline" id="timeline">
+            <div class="empty">Sem atividade.<br>Inicie o bot para conectar ao WhatsApp Web.</div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>
