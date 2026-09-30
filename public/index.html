@@ -8,21 +8,33 @@
   </head>
   <body>
     <main class="app-shell">
-      <header class="topbar">
-        <div class="brand">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
           <div class="brand-mark" aria-hidden="true">P</div>
           <div>
-            <h1>Poll Runner</h1>
-            <p>Monitor de enquetes</p>
+            <strong>Poll Runner</strong>
+            <span>Automação local</span>
           </div>
         </div>
-        <div class="toolbar">
+        <nav class="navigation" aria-label="Funções do aplicativo">
+          <button class="nav-item active" data-view="polls-view"><span>◉</span> Enquetes</button>
+          <button class="nav-item" data-view="products-view"><span>□</span> Compras</button>
+        </nav>
+        <p class="sidebar-note">As sessões do WhatsApp e Amazon ficam salvas apenas neste computador.</p>
+      </aside>
+      <div class="workspace">
+      <header class="topbar">
+        <div class="brand">
+          <div><h1 id="page-title">Enquetes</h1><p id="page-description">Monitor e voto automático no WhatsApp.</p></div>
+        </div>
+        <div class="toolbar" id="poll-toolbar">
           <div class="status" id="status"><span></span><strong>Parado</strong></div>
           <button class="button secondary" id="stop" disabled>Parar</button>
           <button class="button primary" id="start">Iniciar</button>
         </div>
       </header>
 
+      <div class="view" id="polls-view">
       <div class="layout">
         <section class="panel settings">
           <div class="panel-heading">
@@ -63,6 +75,35 @@
             <div class="empty">Sem atividade.<br>Inicie o bot para conectar ao WhatsApp Web.</div>
           </div>
         </section>
+      </div>
+      </div>
+
+      <section class="view products-panel" id="products-view" hidden>
+        <div class="panel-heading">
+          <div>
+            <h2>Monitor de compras</h2>
+            <p class="panel-description">Amazon: monitora estoque e abre a revisão do pedido dentro do limite definido.</p>
+          </div>
+          <div class="product-toolbar">
+            <div class="status" id="products-status"><span></span><strong>Parado</strong></div>
+            <button class="button secondary" id="products-stop" disabled>Parar</button>
+            <button class="button primary" id="products-start">Iniciar monitor</button>
+          </div>
+        </div>
+        <div class="product-form">
+          <input id="product-url" autocomplete="off" placeholder="Link do produto da Amazon.com.br">
+          <input id="product-price" inputmode="decimal" autocomplete="off" placeholder="Preço máximo (ex.: 499,90)">
+          <select id="product-interval" aria-label="Intervalo de verificação">
+            <option value="60000">A cada 1 min</option>
+            <option value="120000">A cada 2 min</option>
+            <option value="300000">A cada 5 min</option>
+          </select>
+          <button class="button secondary" id="product-add">Adicionar</button>
+        </div>
+        <p class="shopping-note" id="products-note">A Amazon pode pedir login ou verificação manual. O pedido final nunca é enviado automaticamente.</p>
+        <div class="product-list" id="product-list"></div>
+        <div class="product-events" id="product-events"></div>
+      </section>
       </div>
     </main>
     <script src="app.js"></script>

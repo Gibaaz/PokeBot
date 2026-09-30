@@ -8,9 +8,36 @@ const timeline = document.querySelector('#timeline');
 const saveNote = document.querySelector('#save-note');
 const start = document.querySelector('#start');
 const stop = document.querySelector('#stop');
+const productUrl = document.querySelector('#product-url');
+const productPrice = document.querySelector('#product-price');
+const productInterval = document.querySelector('#product-interval');
+const productList = document.querySelector('#product-list');
+const productEvents = document.querySelector('#product-events');
+const productsStatus = document.querySelector('#products-status');
+const productsStart = document.querySelector('#products-start');
+const productsStop = document.querySelector('#products-stop');
+const productsNote = document.querySelector('#products-note');
 let terms = [];
 let loaded = false;
 let configLocked = false;
+let products = [];
+let productsLoaded = false;
+let productsLocked = false;
+let alertAudio;
+const alertedProducts = new Set();
+
+const viewMeta = {
+  'polls-view': ['Enquetes', 'Monitor e voto automático no WhatsApp.'],
+  'products-view': ['Compras', 'Monitore produtos e avance até a revisão do pedido.'],
+};
+
+function selectView(id) {
+  document.querySelectorAll('.view').forEach((view) => { view.hidden = view.id !== id; });
+  document.querySelectorAll('.nav-item').forEach((button) => button.classList.toggle('active', button.dataset.view === id));
+  document.querySelector('#poll-toolbar').hidden = id !== 'polls-view';
+  document.querySelector('#page-title').textContent = viewMeta[id][0];
+  document.querySelector('#page-description').textContent = viewMeta[id][1];
+}
 
 function renderTerms() {
   chips.innerHTML = terms.map((term, index) => `<span class="chip">${escapeHtml(term)}<button data-index="${index}" aria-label="Remover ${escapeHtml(term)}" ${configLocked ? 'disabled' : ''}>x</button></span>`).join('');
@@ -69,6 +96,65 @@ function renderLogs(logs) {
   timeline.innerHTML = logs.map((entry) => `<article class="event ${entry.state}"><i class="event-mark"></i><div><p>${escapeHtml(entry.message)}</p><time>${new Date(entry.at).toLocaleTimeString('pt-BR')}</time></div></article>`).join('');
 }
 
+function renderProductStatus(state) {
+  const labels = { stopped: 'Parado', starting: 'Iniciando', running: 'Monitorando', checking: 'Verificando', attention: 'Atenção', error: 'Erro' };
+  productsStatus.className = `status ${state}`;
+  productsStatus.innerHTML = `<span></span><strong>${labels[state] || state}</strong>`;
+  productsLocked = state !== 'stopped' && state !== 'error';
+  productsStart.disabled = productsLocked;
+  productsStop.disabled = state === 'stopped';
+  productUrl.disabled = productsLocked;
+  productPrice.disabled = productsLocked;
+  productInterval.disabled = productsLocked;
+  document.querySelector('#product-add').disabled = productsLocked;
+}
+
+function productState(product) {
+  const labels = { waiting: 'Aguardando', unavailable: 'Esgotado', price_high: 'Acima do limite', available: 'Disponível', review: 'Em revisão', attention: 'Atenção', error: 'Erro' };
+  return labels[product.state] || product.state;
+}
+
+function renderProducts() {
+  if (!products.length) {
+    productList.innerHTML = '<div class="empty-products">Nenhum produto monitorado.</div>';
+    return;
+  }
+  productList.innerHTML = products.map((product) => `<article class="product-row"><div><p class="product-id">${escapeHtml(product.title || product.asin)} <span class="muted">${escapeHtml(product.asin)}</span></p><p class="product-detail">${escapeHtml(product.detail || productState(product))}</p></div><div class="product-price">Limite R$ ${Number(product.maxPrice).toFixed(2)}<br><span class="muted">${productState(product)}</span></div><div class="product-actions"><button class="small-button checkout" data-id="${product.id}" ${productsLocked || product.state !== 'available' ? 'disabled' : ''}>Revisar</button><button class="small-button remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div></article>`).join('');
+  productList.querySelectorAll('.remove-product').forEach((button) => button.addEventListener('click', async () => {
+    try { const data = await window.pollRunner.removeProduct(button.dataset.id); products = data.products; renderProducts(); } catch (error) { productsNote.textContent = error.message; }
+  }));
+  productList.querySelectorAll('.checkout').forEach((button) => button.addEventListener('click', async () => {
+    try { await window.pollRunner.checkoutProduct(button.dataset.id); } catch (error) { productsNote.textContent = error.message; }
+  }));
+}
+
+function renderProductLogs(logs) {
+  if (!logs.length) { productEvents.innerHTML = ''; return; }
+  productEvents.innerHTML = logs.slice(0, 5).map((entry) => `<article class="event ${entry.state}"><i class="event-mark"></i><div><p>${escapeHtml(entry.message)}</p><time>${new Date(entry.at).toLocaleTimeString('pt-BR')}</time></div></article>`).join('');
+}
+
+function prepareAlertSound() {
+  if (!alertAudio) alertAudio = new AudioContext();
+  return alertAudio.resume();
+}
+
+function playAvailabilitySound() {
+  if (!alertAudio) return;
+  const startAt = alertAudio.currentTime;
+  [740, 1047, 740, 1319].forEach((frequency, index) => {
+    const oscillator = alertAudio.createOscillator();
+    const gain = alertAudio.createGain();
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'square';
+    gain.gain.setValueAtTime(0.0001, startAt + index * 0.28);
+    gain.gain.exponentialRampToValueAtTime(0.22, startAt + index * 0.28 + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + index * 0.28 + 0.25);
+    oscillator.connect(gain).connect(alertAudio.destination);
+    oscillator.start(startAt + index * 0.28);
+    oscillator.stop(startAt + index * 0.28 + 0.26);
+  });
+}
+
 async function request(url, options) {
   if (url === '/api/status') return window.pollRunner.status();
   if (url === '/api/config') return window.pollRunner.saveConfig(JSON.parse(options.body));
@@ -95,7 +181,18 @@ async function refresh() {
   }
 }
 
+async function refreshProducts() {
+  try {
+    const data = await window.pollRunner.productsStatus();
+    if (!productsLoaded) { products = data.products; productsLoaded = true; }
+    renderProductStatus(data.state);
+    renderProducts();
+    renderProductLogs(data.logs);
+  } catch (error) { productsNote.textContent = error.message; }
+}
+
 document.querySelector('#addTerm').addEventListener('click', addTerm);
+document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => selectView(button.dataset.view)));
 termInput.addEventListener('keydown', (event) => { if (event.key === 'Enter') addTerm(); });
 interval.addEventListener('input', () => { intervalValue.textContent = `${interval.value} ms`; });
 document.querySelector('#save').addEventListener('click', async () => {
@@ -108,9 +205,38 @@ document.querySelector('#save').addEventListener('click', async () => {
 });
 start.addEventListener('click', async () => { try { await request('/api/start', { method: 'POST' }); refresh(); } catch (error) { showNotice(error.message); } });
 stop.addEventListener('click', async () => { await request('/api/stop', { method: 'POST' }); refresh(); });
+document.querySelector('#product-add').addEventListener('click', async () => {
+  try {
+    const data = await window.pollRunner.addProduct({ url: productUrl.value, maxPrice: productPrice.value, intervalMs: productInterval.value });
+    products = data.products;
+    productUrl.value = '';
+    productPrice.value = '';
+    productsNote.textContent = 'Produto adicionado. O checkout para na revisão do pedido.';
+    renderProducts();
+  } catch (error) { productsNote.textContent = error.message; }
+});
+productsStart.addEventListener('click', async () => {
+  try {
+    await prepareAlertSound();
+    await window.pollRunner.startProducts();
+  } catch (error) { productsNote.textContent = error.message; }
+});
+productsStop.addEventListener('click', async () => { await window.pollRunner.stopProducts(); });
 
 refresh();
+refreshProducts();
 window.pollRunner.onUpdate(({ state, logs }) => {
   renderStatus(state);
   renderLogs(logs);
+});
+window.pollRunner.onProductsUpdate((data) => {
+  products = data.products;
+  const event = data.logs[0];
+  if (event?.state === 'available' && !alertedProducts.has(event.at)) {
+    alertedProducts.add(event.at);
+    playAvailabilitySound();
+  }
+  renderProductStatus(data.state);
+  renderProducts();
+  renderProductLogs(data.logs);
 });
