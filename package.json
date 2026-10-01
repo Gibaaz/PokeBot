@@ -7,11 +7,16 @@
   "main": "src/main.js",
   "scripts": {
     "start": "electron .",
-    "check": "node --check src/bot.js && node --check src/product-monitor.js && node --check src/main.js && node --check src/preload.cjs",
-    "build": "electron-builder --win portable"
+    "check": "node --check src/browser-path.js && node --check src/bot.js && node --check src/product-utils.js && node --check src/product-monitor.js && node --check src/main.js && node --check src/preload.cjs",
+    "test": "node --test",
+    "build": "electron-builder --win portable",
+    "build:installer": "electron-builder --win nsis"
   },
   "dependencies": {
-    "playwright": "^1.58.2"
+    "@phosphor-icons/web": "^2.1.2",
+    "chart.js": "^4.5.1",
+    "playwright": "^1.58.2",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "electron": "^40.0.0",
@@ -29,6 +34,15 @@
       "public/**/*",
       "config.example.json",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "playwright-browsers",
+        "to": "playwright-browsers",
+        "filter": [
+          "**/*"
+        ]
+      }
     ],
     "win": {
       "target": "portable"

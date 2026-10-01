@@ -1,5 +1,6 @@
 node_modules/
 whatsapp-profile/
 release/
+playwright-browsers/
 config.json
 npm-debug.log*

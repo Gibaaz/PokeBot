@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>PokeBot</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../node_modules/@phosphor-icons/web/src/regular/style.css">
   </head>
   <body>
     <main class="app-shell">
@@ -17,8 +18,9 @@
           </div>
         </div>
         <nav class="navigation" aria-label="Funções do aplicativo">
-          <button class="nav-item active" data-view="polls-view"><span>◉</span> Enquetes</button>
-          <button class="nav-item" data-view="products-view"><span>□</span> Compras</button>
+          <button class="nav-item active" data-view="polls-view"><i class="ph ph-list-checks"></i> Enquetes</button>
+          <button class="nav-item" data-view="products-view"><i class="ph ph-shopping-cart"></i> Compras</button>
+          <button class="nav-item" data-view="settings-view"><i class="ph ph-gear-six"></i> Configurações</button>
         </nav>
         <p class="sidebar-note">As sessões do WhatsApp e Amazon ficam salvas apenas neste computador.</p>
       </aside>
@@ -30,7 +32,13 @@
         <div class="toolbar" id="poll-toolbar">
           <div class="status" id="status"><span></span><strong>Parado</strong></div>
           <button class="button secondary" id="stop" disabled>Parar</button>
+          <button class="button secondary" id="pause" disabled>Pausar</button>
           <button class="button primary" id="start">Iniciar</button>
+        </div>
+        <div class="toolbar" id="products-toolbar" hidden>
+          <div class="status" id="products-status"><span></span><strong>Parado</strong></div>
+          <button class="button secondary" id="products-stop" disabled>Parar</button>
+          <button class="button primary" id="products-start">Iniciar monitor</button>
         </div>
       </header>
 
@@ -45,9 +53,9 @@
             <span class="save-note" id="save-note" aria-live="polite"></span>
           </div>
 
-          <label for="groupName">Grupo do WhatsApp</label>
-          <input id="groupName" autocomplete="off" placeholder="Nome exato do grupo">
-          <p class="hint">O bot só atua com essa conversa aberta.</p>
+          <label for="groupName">Grupo do WhatsApp (opcional)</label>
+          <input id="groupName" autocomplete="off" placeholder="Deixe vazio para usar a conversa aberta">
+          <p class="hint">Com um nome, o bot abre somente esse grupo. Vazio: monitora a conversa aberta.</p>
 
           <label for="termInput">Termos para votar</label>
           <div class="add-term">
@@ -84,44 +92,16 @@
             <div class="panel-heading">
               <div>
                 <h2>Monitor de compras</h2>
-                <p class="panel-description">Amazon: monitora estoque e abre a revisão do pedido dentro do limite definido.</p>
+                <p class="panel-description">Amazon, Mercado Livre e Copag: monitora estoque e abre a revisão dentro do limite definido.</p>
               </div>
-              <div class="product-toolbar">
-                <div class="status" id="products-status"><span></span><strong>Parado</strong></div>
-                <button class="button secondary" id="products-stop" disabled>Parar</button>
-                <button class="button primary" id="products-start">Iniciar monitor</button>
-              </div>
+              <button class="small-button" id="open-product-form">Adicionar produto</button>
             </div>
-            <div class="product-form">
-              <input id="product-url" autocomplete="off" placeholder="Link do produto da Amazon.com.br">
-              <input id="product-price" inputmode="decimal" autocomplete="off" placeholder="Preço máximo (ex.: 499,90)">
-              <select id="product-interval" aria-label="Intervalo de verificação">
-                <option value="60000">A cada 1 min</option>
-                <option value="120000">A cada 2 min</option>
-                <option value="300000">A cada 5 min</option>
-                <option value="custom">Personalizado</option>
-              </select>
-              <input id="product-custom-interval" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="Minutos" hidden>
-              <button class="button secondary" id="product-add">Adicionar</button>
-            </div>
-            <details class="product-filters">
-              <summary>Filtros da oferta</summary>
-              <div>
-                <input id="product-seller" autocomplete="off" placeholder="Vendedor aceito (opcional)">
-                <input id="product-shipping" inputmode="decimal" autocomplete="off" placeholder="Frete máximo (opcional)">
-              </div>
-            </details>
-            <p class="shopping-note" id="products-note">A Amazon pode pedir login ou verificação manual. O pedido final nunca é enviado automaticamente.</p>
-            <details class="alert-settings">
-              <summary>Configurar alertas</summary>
-              <div class="alert-settings-body" aria-label="Configuração de alertas sonoros">
-                <label class="alert-toggle"><input id="alert-enabled" type="checkbox" checked> <span>Ativar alerta sonoro</span></label>
-                <label class="alert-toggle"><input id="alert-notifications" type="checkbox" checked> <span>Notificação do Windows</span></label>
-                <label class="alert-sound"><span>Som</span><select id="alert-sound"><option value="alarm">Alarme</option><option value="double">Bipe duplo</option><option value="single">Bipe simples</option><option value="rizz">Rizz</option><option value="custom">Som personalizado 2</option></select></label>
-                <button class="small-button" id="alert-test" type="button">Testar som</button>
-              </div>
-            </details>
             <div class="product-list" id="product-list"></div>
+            <div class="product-list-toolbar">
+              <button class="small-button icon-only" id="products-resume-all" title="Retomar todos" aria-label="Retomar todos"><i class="ph ph-arrow-counter-clockwise"></i></button>
+              <button class="small-button icon-only" id="products-import" title="Importar lista" aria-label="Importar lista"><i class="ph ph-download-simple"></i></button>
+              <button class="small-button icon-only" id="products-export" title="Exportar lista" aria-label="Exportar lista"><i class="ph ph-upload-simple"></i></button>
+            </div>
           </section>
           <aside class="panel product-activity">
             <div class="panel-heading">
@@ -134,8 +114,71 @@
           </aside>
         </div>
       </section>
+
+      <section class="view" id="settings-view" hidden>
+        <section class="panel app-settings-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Aplicativo</h2>
+              <p class="panel-description">Preferências de execução no Windows.</p>
+            </div>
+          </div>
+          <div class="app-settings-content">
+            <label class="app-settings-toggle"><input id="start-with-windows" type="checkbox"> <span>Iniciar o PokeBot com o Windows</span></label>
+            <p>Abre o aplicativo automaticamente quando você entrar no Windows.</p>
+            <label class="app-settings-toggle"><input id="minimize-to-tray" type="checkbox" checked> <span>Minimizar para a bandeja ao fechar</span></label>
+            <p>Use o ícone do PokeBot perto do relógio para reabrir ou encerrar o aplicativo.</p>
+            <button class="button secondary" id="save-app-settings">Salvar preferências</button>
+            <span class="save-note" id="app-settings-note" aria-live="polite"></span>
+          </div>
+        </section>
+        <section class="panel alert-config-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Alertas de compras</h2>
+              <p class="panel-description">Som e notificações quando uma oferta exigir atenção ou ficar disponível.</p>
+            </div>
+          </div>
+          <div class="settings-alert-content" aria-label="Configuração de alertas sonoros">
+            <label class="alert-toggle"><input id="alert-enabled" type="checkbox" checked> <span>Ativar alerta sonoro</span></label>
+            <label class="alert-toggle"><input id="alert-notifications" type="checkbox" checked> <span>Notificação do Windows</span></label>
+            <label class="alert-sound"><span>Som</span><select id="alert-sound"><option value="alarm">Alarme</option><option value="double">Bipe duplo</option><option value="single">Bipe simples</option><option value="rizz">Rizz</option><option value="custom">Som personalizado 2</option></select></label>
+            <button class="small-button" id="alert-test" type="button">Testar som</button>
+          </div>
+        </section>
+      </section>
+      <dialog class="confirm-dialog" id="import-dialog" aria-labelledby="import-dialog-title">
+        <div class="confirm-dialog-header"><h2 id="import-dialog-title">Substituir lista?</h2><button class="dialog-close" id="cancel-import" type="button" aria-label="Fechar"><i class="ph ph-x"></i></button></div>
+        <p>A lista atual será substituída pelo arquivo escolhido.</p>
+        <div class="confirm-dialog-actions"><button class="small-button" id="confirm-import" type="button">Escolher arquivo</button></div>
+      </dialog>
+      <dialog class="product-dialog" id="product-dialog" aria-labelledby="product-dialog-title">
+        <div class="confirm-dialog-header"><h2 id="product-dialog-title">Adicionar produto</h2><button class="dialog-close" id="product-cancel" type="button" aria-label="Fechar"><i class="ph ph-x"></i></button></div>
+        <div class="product-form">
+          <input id="product-url" autocomplete="off" placeholder="Link de produto da Amazon, Mercado Livre ou Copag">
+          <input id="product-price" inputmode="decimal" autocomplete="off" placeholder="Preço máximo (ex.: 499,90)">
+          <select id="product-interval" aria-label="Intervalo de verificação">
+            <option value="60000">A cada 1 min</option>
+            <option value="120000">A cada 2 min</option>
+            <option value="300000">A cada 5 min</option>
+            <option value="custom">Personalizado</option>
+          </select>
+          <input id="product-custom-interval" type="number" min="1" step="1" inputmode="numeric" autocomplete="off" placeholder="Minutos" hidden>
+        </div>
+        <details class="product-filters">
+          <summary>Filtros opcionais</summary>
+          <div>
+            <input id="product-seller" autocomplete="off" placeholder="Vendedor aceito">
+            <input id="product-shipping" inputmode="decimal" autocomplete="off" placeholder="Frete máximo">
+            <input id="product-group" autocomplete="off" placeholder="Lista ou grupo">
+          </div>
+        </details>
+        <p class="shopping-note" id="products-note">O pedido final nunca é enviado automaticamente.</p>
+        <div class="confirm-dialog-actions"><button class="button secondary" id="product-add" type="button">Adicionar</button></div>
+      </dialog>
       </div>
     </main>
+    <script src="../node_modules/chart.js/dist/chart.umd.min.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
