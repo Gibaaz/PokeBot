@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { chromium } from 'playwright';
-import { browserExecutablePath } from './browser-path.js';
+import { browserExecutablePath, launchBrowserContext } from './browser-path.js';
 
 export const appRoot = path.resolve(import.meta.dirname, '..');
 
@@ -73,11 +73,12 @@ export class PollBot {
     this.update('starting', 'Abrindo o WhatsApp Web.');
     try {
       const executablePath = browserExecutablePath();
-      this.context = await chromium.launchPersistentContext(this.profilePath, {
+      const { context, recoveredProfile } = await launchBrowserContext(chromium, this.profilePath, {
         headless: false,
         viewport: { width: 1280, height: 900 },
         ...(executablePath ? { executablePath } : {}),
       });
+      this.context = context;
       this.context.once('close', () => {
         if (runId !== this.runId) return;
         clearInterval(this.timer);
@@ -90,7 +91,9 @@ export class PollBot {
       });
       this.page = this.context.pages()[0] || await this.context.newPage();
       await this.page.goto('https://web.whatsapp.com/', { waitUntil: 'domcontentloaded' });
-      this.update('awaiting_login', 'Leia o QR code no WhatsApp Web, se ele aparecer.');
+      this.update('awaiting_login', recoveredProfile
+        ? 'O perfil anterior foi preservado por falha do navegador. Leia o QR code para entrar novamente.'
+        : 'Leia o QR code no WhatsApp Web, se ele aparecer.');
 
       await this.page.waitForFunction(
         () => document.querySelectorAll('[contenteditable="true"]').length > 0,

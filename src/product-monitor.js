@@ -1,7 +1,7 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { browserExecutablePath } from './browser-path.js';
+import { browserExecutablePath, launchBrowserContext } from './browser-path.js';
 import { normalizeText, priceFromText, shippingFromText } from './product-utils.js';
 
 function attentionReason(text) {
@@ -111,11 +111,12 @@ export class ProductMonitor {
     this.emit('starting', 'Abrindo as lojas. Faça login se necessário.');
     try {
       const executablePath = browserExecutablePath();
-      this.context = await chromium.launchPersistentContext(this.profilePath, {
+      const { context, recoveredProfile } = await launchBrowserContext(chromium, this.profilePath, {
         headless: false,
         viewport: { width: 1280, height: 900 },
         ...(executablePath ? { executablePath } : {}),
       });
+      this.context = context;
       this.context.once('close', () => {
         if (runId !== this.runId) return;
         clearInterval(this.timer);
@@ -125,7 +126,9 @@ export class ProductMonitor {
         this.emit('error', 'A janela das lojas foi fechada ou desconectada.');
       });
       this.initialPage = this.context.pages()[0] || await this.context.newPage();
-      this.emit('running', 'Monitorando produtos ativos.');
+      this.emit('running', recoveredProfile
+        ? 'O perfil anterior foi preservado por falha do navegador. Faça login nas lojas novamente.'
+        : 'Monitorando produtos ativos.');
       await this.checkAll(runId);
       this.timer = setInterval(() => this.checkAll(runId), 10_000);
     } catch (error) {
