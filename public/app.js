@@ -40,6 +40,11 @@ const appSettingsNote = document.querySelector('#app-settings-note');
 const importDialog = document.querySelector('#import-dialog');
 const cancelImport = document.querySelector('#cancel-import');
 const confirmImport = document.querySelector('#confirm-import');
+const cardSearchForm = document.querySelector('#card-search-form');
+const cardNumber = document.querySelector('#card-number');
+const cardSearchButton = document.querySelector('#card-search');
+const cardSearchNote = document.querySelector('#card-search-note');
+const cardResults = document.querySelector('#card-results');
 let terms = [];
 let loaded = false;
 let configLocked = false;
@@ -54,6 +59,7 @@ let priceCharts = [];
 const viewMeta = {
   'polls-view': ['Enquetes', 'Monitor e voto automático no WhatsApp.'],
   'products-view': ['Compras', 'Monitore produtos e avance até a revisão do pedido.'],
+  'cards-view': ['Cartas', 'Consulte os preços de cartas na Liga Pokémon.'],
   'settings-view': ['Configurações', 'Preferências do aplicativo e execução no Windows.'],
 };
 
@@ -281,6 +287,21 @@ function renderAlertConfig(config) {
   alertSound.disabled = !config.enabled;
 }
 
+function formatPrice(price) {
+  return Number.isFinite(price) ? price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem preço';
+}
+
+function renderCardResults(results) {
+  if (!results.length) {
+    cardResults.innerHTML = '<div class="empty-products">Nenhuma carta encontrada para esse número.</div>';
+    return;
+  }
+  cardResults.innerHTML = results.map((card, index) => `<article class="card-result"><div class="card-result-body">${card.image ? `<div class="card-image-preview"><img class="card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" referrerpolicy="no-referrer"><img class="card-image-zoom" src="${escapeHtml(card.image)}" alt="" aria-hidden="true" referrerpolicy="no-referrer"></div>` : '<div class="card-image card-image-placeholder"><i class="ph ph-image"></i></div>'}<div class="card-result-content"><div class="card-result-heading"><div><h3>${escapeHtml(card.name)}</h3><p>${escapeHtml(card.number)}${card.edition ? ` · ${escapeHtml(card.edition)}` : ''}</p></div><button class="small-button open-card" data-index="${index}">Abrir na Liga</button></div><div class="card-prices"><p><span>Menor preço</span><strong>${formatPrice(card.lowestPrice)}</strong></p><p><span>Preço médio</span><strong>${formatPrice(card.averagePrice)}</strong></p><p><span>Maior preço</span><strong>${formatPrice(card.highestPrice)}</strong></p></div></div></div></article>`).join('');
+  cardResults.querySelectorAll('.open-card').forEach((button) => button.addEventListener('click', async () => {
+    try { await window.pollRunner.openCard(results[Number(button.dataset.index)].url); } catch (error) { cardSearchNote.textContent = error.message; }
+  }));
+}
+
 function playCustomAlert(sound) {
   const tracks = {
     rizz: 'sounds/rizz-sound-effect.mp3',
@@ -334,6 +355,22 @@ async function refreshProducts() {
 
 document.querySelector('#addTerm').addEventListener('click', addTerm);
 document.querySelectorAll('.nav-item').forEach((button) => button.addEventListener('click', () => selectView(button.dataset.view)));
+cardSearchForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  cardSearchNote.textContent = '';
+  cardSearchButton.disabled = true;
+  cardSearchButton.textContent = 'Pesquisando';
+  try {
+    const data = await window.pollRunner.searchCards(cardNumber.value);
+    renderCardResults(data.results);
+  } catch (error) {
+    cardResults.innerHTML = '<div class="empty-products">Não foi possível concluir a pesquisa.</div>';
+    cardSearchNote.textContent = error.message;
+  } finally {
+    cardSearchButton.disabled = false;
+    cardSearchButton.textContent = 'Pesquisar';
+  }
+});
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.product-menu')) closeProductMenus();
 });

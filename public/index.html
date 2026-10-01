@@ -20,6 +20,7 @@
         <nav class="navigation" aria-label="Funções do aplicativo">
           <button class="nav-item active" data-view="polls-view"><i class="ph ph-list-checks"></i> Enquetes</button>
           <button class="nav-item" data-view="products-view"><i class="ph ph-shopping-cart"></i> Compras</button>
+          <button class="nav-item" data-view="cards-view"><i class="ph ph-cards"></i> Cartas</button>
           <button class="nav-item" data-view="settings-view"><i class="ph ph-gear-six"></i> Configurações</button>
         </nav>
         <p class="sidebar-note">As sessões do WhatsApp e Amazon ficam salvas apenas neste computador.</p>
@@ -113,6 +114,27 @@
             <div class="product-events" id="product-events"></div>
           </aside>
         </div>
+      </section>
+
+      <section class="view" id="cards-view" hidden>
+        <section class="panel cards-panel">
+          <div class="panel-heading">
+            <div>
+              <h2>Consulta de cartas</h2>
+              <p class="panel-description">Pesquise o número da carta e compare os valores no marketplace da Liga Pokémon.</p>
+            </div>
+          </div>
+          <form class="card-search-form" id="card-search-form">
+            <label for="card-number">Número da carta</label>
+            <div>
+              <input id="card-number" autocomplete="off" placeholder="Ex.: 158/128 ou TG29/TG30">
+              <button class="button primary" id="card-search" type="submit">Pesquisar</button>
+            </div>
+            <p class="hint">Se o número existir em mais de uma coleção, todos os resultados serão exibidos.</p>
+          </form>
+          <p class="card-search-note" id="card-search-note" aria-live="polite"></p>
+          <div class="card-results" id="card-results"><div class="empty-products">Pesquise uma carta para ver os preços da Liga Pokémon.</div></div>
+        </section>
       </section>
 
       <section class="view" id="settings-view" hidden>

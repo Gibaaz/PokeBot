@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { PollBot, appRoot } from './bot.js';
 import { ProductMonitor } from './product-monitor.js';
 import { amazonAsinFromUrl, copagProductCodeFromUrl, mercadoLivreCodeFromUrl, storeFromUrl } from './product-utils.js';
+import { searchLigaPokemon } from './card-search.js';
 
 let configPath;
 let productsPath;
@@ -333,6 +334,12 @@ ipcMain.handle('bot:pause', () => {
 ipcMain.handle('bot:resume', () => {
   bot.resume();
   return { state: 'running' };
+});
+ipcMain.handle('cards:search', async (_event, number) => ({ results: await searchLigaPokemon(number) }));
+ipcMain.handle('cards:open', async (_event, url) => {
+  const cardUrl = new URL(String(url));
+  if (cardUrl.protocol !== 'https:' || cardUrl.hostname !== 'www.ligapokemon.com.br') throw new Error('Link de carta inválido.');
+  await shell.openExternal(cardUrl.toString());
 });
 ipcMain.handle('products:status', () => ({ state: productMonitor.state, products, logs: productLogs, alertConfig }));
 ipcMain.handle('products:save-alert-config', (_event, nextConfig) => ({ alertConfig: saveAlertConfig(nextConfig) }));

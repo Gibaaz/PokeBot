@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld('pollRunner', {
   pause: () => ipcRenderer.invoke('bot:pause'),
   resume: () => ipcRenderer.invoke('bot:resume'),
   onUpdate: (callback) => ipcRenderer.on('bot:update', (_event, data) => callback(data)),
+  searchCards: (number) => ipcRenderer.invoke('cards:search', number),
+  openCard: (url) => ipcRenderer.invoke('cards:open', url),
   productsStatus: () => ipcRenderer.invoke('products:status'),
   saveAlertConfig: (config) => ipcRenderer.invoke('products:save-alert-config', config),
   testAlert: () => ipcRenderer.invoke('products:test-alert'),
