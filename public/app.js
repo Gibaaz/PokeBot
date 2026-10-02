@@ -41,10 +41,23 @@ const importDialog = document.querySelector('#import-dialog');
 const cancelImport = document.querySelector('#cancel-import');
 const confirmImport = document.querySelector('#confirm-import');
 const cardSearchForm = document.querySelector('#card-search-form');
+const cardSearchMode = document.querySelector('#card-search-mode');
 const cardNumber = document.querySelector('#card-number');
+const cardEditionQuery = document.querySelector('#card-edition-query');
+const cardEditionOptions = document.querySelector('#card-edition-options');
+const cardSearchHint = document.querySelector('#card-search-hint');
 const cardSearchButton = document.querySelector('#card-search');
 const cardSearchNote = document.querySelector('#card-search-note');
+const cardFilters = document.querySelector('#card-filters');
+const cardEditionFilter = document.querySelector('#card-edition-filter');
+const cardRarityFilter = document.querySelector('#card-rarity-filter');
+const cardMinPrice = document.querySelector('#card-min-price');
+const cardMaxPrice = document.querySelector('#card-max-price');
+const cardSort = document.querySelector('#card-sort');
+const cardPricedOnly = document.querySelector('#card-priced-only');
+const cardFilterSummary = document.querySelector('#card-filter-summary');
 const cardResults = document.querySelector('#card-results');
+const cardPagination = document.querySelector('#card-pagination');
 let terms = [];
 let loaded = false;
 let configLocked = false;
@@ -55,6 +68,10 @@ let alertSettingsLoaded = false;
 let customAlertAudio;
 let editingProductId = null;
 let priceCharts = [];
+let searchedCards = [];
+let cardPage = 1;
+let cardEditions = [];
+const CARDS_PER_PAGE = 10;
 
 const viewMeta = {
   'polls-view': ['Enquetes', 'Monitor e voto automático no WhatsApp.'],
@@ -154,6 +171,10 @@ function productState(product) {
   return labels[product.state] || product.state;
 }
 
+function formatProductInterval(intervalMs) {
+  return intervalMs < 60_000 ? `${Math.round(intervalMs / 1_000)} s` : `${Math.round(intervalMs / 60_000)} min`;
+}
+
 function storeMeta(store) {
   if (store === 'mercadolivre') return { name: 'Mercado Livre', className: 'store-mercadolivre' };
   if (store === 'copag') return { name: 'Copag', className: 'store-copag' };
@@ -179,7 +200,7 @@ function openProductDialog(product = null) {
   productSeller.value = product?.sellerFilter || '';
   productShipping.value = product?.maxShipping ?? '';
   productGroup.value = product?.group || '';
-  if (product && ![60000, 120000, 300000].includes(product.intervalMs)) {
+  if (product && ![10000, 60000, 120000, 300000].includes(product.intervalMs)) {
     productInterval.value = 'custom';
     productCustomInterval.value = Math.round(product.intervalMs / 60_000);
   } else {
@@ -241,7 +262,7 @@ function renderProducts() {
       : ['review', 'attention'].includes(product.state)
         ? `<button class="small-button resume-product" data-id="${product.id}">Voltar a monitorar</button>`
         : '';
-    return `<article class="product-row ${store.className}"><div class="product-main"><p class="product-id">${escapeHtml(product.title || product.asin)}</p><span class="muted store-label"><i></i>${store.name} · ${escapeHtml(product.asin)}</span></div><div class="product-price"><strong>${productState(product)}</strong><span>Limite R$ ${Number(product.maxPrice).toFixed(2)}</span></div><div class="product-actions">${primaryAction}<details class="product-menu"><summary aria-label="Mais ações"><i class="ph ph-dots-three"></i></summary><div><button class="menu-edit edit-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Editar</button><button class="menu-edit toggle-product" data-id="${product.id}" data-enabled="${product.enabled}">${product.enabled ? 'Pausar' : 'Ativar'}</button><button class="menu-edit screenshot" data-path="${escapeHtml(product.screenshotPath || '')}" ${product.screenshotPath ? '' : 'hidden'}>Abrir captura</button><button class="menu-edit danger remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div></details></div><details class="product-details"><summary>Detalhes</summary><p>${escapeHtml(product.detail || productState(product))}</p><p class="muted">A cada ${Math.round(product.intervalMs / 60_000)} min${product.group ? ` · ${escapeHtml(product.group)}` : ''}${product.seller ? ` · ${escapeHtml(product.seller)}` : ''}${Number.isFinite(product.shipping) ? ` · Frete R$ ${product.shipping.toFixed(2)}` : ''}</p><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></details></article>`;
+    return `<article class="product-row ${store.className}"><div class="product-main"><p class="product-id">${escapeHtml(product.title || product.asin)}</p><span class="muted store-label"><i></i>${store.name} · ${escapeHtml(product.asin)}</span></div><div class="product-price"><strong>${productState(product)}</strong><span>Limite R$ ${Number(product.maxPrice).toFixed(2)}</span></div><div class="product-actions">${primaryAction}<details class="product-menu"><summary aria-label="Mais ações"><i class="ph ph-dots-three"></i></summary><div><button class="menu-edit edit-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Editar</button><button class="menu-edit toggle-product" data-id="${product.id}" data-enabled="${product.enabled}">${product.enabled ? 'Pausar' : 'Ativar'}</button><button class="menu-edit screenshot" data-path="${escapeHtml(product.screenshotPath || '')}" ${product.screenshotPath ? '' : 'hidden'}>Abrir captura</button><button class="menu-edit danger remove-product" data-id="${product.id}" ${productsLocked ? 'disabled' : ''}>Remover</button></div></details></div><details class="product-details"><summary>Detalhes</summary><p>${escapeHtml(product.detail || productState(product))}</p><p class="muted">A cada ${formatProductInterval(product.intervalMs)}${product.group ? ` · ${escapeHtml(product.group)}` : ''}${product.seller ? ` · ${escapeHtml(product.seller)}` : ''}${Number.isFinite(product.shipping) ? ` · Frete R$ ${product.shipping.toFixed(2)}` : ''}</p><details class="product-history"><summary>Histórico (${Array.isArray(product.history) ? product.history.length : 0})</summary><div>${renderProductHistory(product)}</div></details></details></article>`;
   }).join('');
   productList.querySelectorAll('.remove-product').forEach((button) => button.addEventListener('click', async () => {
     try { const data = await window.pollRunner.removeProduct(button.dataset.id); products = data.products; renderProducts(); } catch (error) { productsNote.textContent = error.message; }
@@ -291,12 +312,118 @@ function formatPrice(price) {
   return Number.isFinite(price) ? price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'Sem preço';
 }
 
+function filteredCards() {
+  const edition = cardEditionFilter.value;
+  const rarity = cardRarityFilter.value;
+  const minimum = cardMinPrice.value === '' ? null : Number(cardMinPrice.value);
+  const maximum = cardMaxPrice.value === '' ? null : Number(cardMaxPrice.value);
+  const priceKey = cardSort.value.split('-')[0] === 'name' ? null : `${cardSort.value.split('-')[0]}Price`;
+  const cards = searchedCards.filter((card) => {
+    if (edition && card.edition !== edition) return false;
+    if (rarity && card.rarity !== rarity) return false;
+    if (cardPricedOnly.checked && !Number.isFinite(card.lowestPrice)) return false;
+    if (minimum !== null && (!Number.isFinite(card.lowestPrice) || card.lowestPrice < minimum)) return false;
+    if (maximum !== null && (!Number.isFinite(card.lowestPrice) || card.lowestPrice > maximum)) return false;
+    return true;
+  });
+
+  return cards.toSorted((first, second) => {
+    if (!priceKey) return first.name.localeCompare(second.name, 'pt-BR');
+    const firstPrice = first[priceKey];
+    const secondPrice = second[priceKey];
+    if (!Number.isFinite(firstPrice) && !Number.isFinite(secondPrice)) return first.name.localeCompare(second.name, 'pt-BR');
+    if (!Number.isFinite(firstPrice)) return 1;
+    if (!Number.isFinite(secondPrice)) return -1;
+    return firstPrice - secondPrice || first.name.localeCompare(second.name, 'pt-BR');
+  });
+}
+
+function populateCardEditions() {
+  const selectedEdition = cardEditionFilter.value;
+  const editions = [...new Set(searchedCards.map((card) => card.edition).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
+  cardEditionFilter.innerHTML = `<option value="">Todas as edições</option>${editions.map((edition) => `<option value="${escapeHtml(edition)}">${escapeHtml(edition)}</option>`).join('')}`;
+  cardEditionFilter.value = editions.includes(selectedEdition) ? selectedEdition : '';
+}
+
+function populateCardRarities() {
+  const selectedRarity = cardRarityFilter.value;
+  const rarities = [...new Set(searchedCards.map((card) => card.rarity).filter(Boolean))].sort((first, second) => first.localeCompare(second, 'pt-BR'));
+  cardRarityFilter.innerHTML = `<option value="">Todas as raridades</option>${rarities.map((rarity) => `<option value="${escapeHtml(rarity)}">${escapeHtml(rarity)}</option>`).join('')}`;
+  cardRarityFilter.value = rarities.includes(selectedRarity) ? selectedRarity : '';
+}
+
+function showCardResults(results) {
+  searchedCards = results;
+  cardPage = 1;
+  populateCardEditions();
+  populateCardRarities();
+  cardFilters.hidden = !searchedCards.length;
+  if (searchedCards.length) updateCardResults();
+  else {
+    renderCardResults(searchedCards);
+    cardPagination.hidden = true;
+  }
+}
+
+async function loadCardEditions() {
+  if (cardEditions.length) return;
+  cardSearchNote.textContent = 'Carregando coleções disponíveis...';
+  const data = await window.pollRunner.cardEditions();
+  cardEditions = data.editions.map((edition) => ({ ...edition, label: `${edition.name} (${edition.acronym})` }));
+  cardEditionOptions.innerHTML = cardEditions.map((edition) => `<option value="${escapeHtml(edition.label)}"></option>`).join('');
+  cardSearchNote.textContent = '';
+}
+
+function selectedCardEdition() {
+  const query = normalize(cardEditionQuery.value);
+  const matches = cardEditions.filter((edition) => [edition.name, edition.acronym, edition.label].some((value) => normalize(value) === query));
+  if (matches.length === 1) return matches[0];
+  const partialMatches = cardEditions.filter((edition) => normalize(edition.name).includes(query));
+  if (partialMatches.length === 1) return partialMatches[0];
+  if (!query) throw new Error('Informe ou selecione uma coleção.');
+  throw new Error('Selecione uma coleção da lista exibida.');
+}
+
+async function updateCardSearchMode() {
+  const editionMode = cardSearchMode.value === 'edition';
+  cardNumber.hidden = editionMode;
+  cardEditionQuery.hidden = !editionMode;
+  cardSearchHint.textContent = editionMode
+    ? 'Escolha uma coleção para carregar todas as cartas, incluindo as que não possuem preço.'
+    : 'Se o número existir em mais de uma coleção, todos os resultados serão exibidos.';
+  if (!editionMode) return;
+  try {
+    await loadCardEditions();
+    cardEditionQuery.focus();
+  } catch (error) {
+    cardSearchNote.textContent = error.message;
+  }
+}
+
+function updateCardResults() {
+  const results = filteredCards();
+  cardFilterSummary.textContent = `${results.length} de ${searchedCards.length} ${searchedCards.length === 1 ? 'resultado' : 'resultados'}`;
+  if (!results.length) {
+    cardResults.innerHTML = '<div class="empty-products">Nenhuma carta corresponde aos filtros selecionados.</div>';
+    cardPagination.hidden = true;
+    return;
+  }
+  const pageCount = Math.ceil(results.length / CARDS_PER_PAGE);
+  cardPage = Math.min(cardPage, pageCount);
+  const start = (cardPage - 1) * CARDS_PER_PAGE;
+  renderCardResults(results.slice(start, start + CARDS_PER_PAGE));
+  cardPagination.hidden = pageCount === 1;
+  if (pageCount > 1) {
+    cardPagination.innerHTML = `<button class="small-button" data-card-page="previous" ${cardPage === 1 ? 'disabled' : ''}>Anterior</button><span>Página ${cardPage} de ${pageCount}</span><button class="small-button" data-card-page="next" ${cardPage === pageCount ? 'disabled' : ''}>Próxima</button>`;
+  }
+}
+
 function renderCardResults(results) {
   if (!results.length) {
     cardResults.innerHTML = '<div class="empty-products">Nenhuma carta encontrada para esse número.</div>';
     return;
   }
-  cardResults.innerHTML = results.map((card, index) => `<article class="card-result"><div class="card-result-body">${card.image ? `<div class="card-image-preview"><img class="card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" referrerpolicy="no-referrer"><img class="card-image-zoom" src="${escapeHtml(card.image)}" alt="" aria-hidden="true" referrerpolicy="no-referrer"></div>` : '<div class="card-image card-image-placeholder"><i class="ph ph-image"></i></div>'}<div class="card-result-content"><div class="card-result-heading"><div><h3>${escapeHtml(card.name)}</h3><p>${escapeHtml(card.number)}${card.edition ? ` · ${escapeHtml(card.edition)}` : ''}</p></div><button class="small-button open-card" data-index="${index}">Abrir na Liga</button></div><div class="card-prices"><p><span>Menor preço</span><strong>${formatPrice(card.lowestPrice)}</strong></p><p><span>Preço médio</span><strong>${formatPrice(card.averagePrice)}</strong></p><p><span>Maior preço</span><strong>${formatPrice(card.highestPrice)}</strong></p></div></div></div></article>`).join('');
+  cardResults.innerHTML = results.map((card, index) => `<article class="card-result"><div class="card-result-body">${card.image ? `<div class="card-image-preview"><img class="card-image" src="${escapeHtml(card.image)}" alt="${escapeHtml(card.name)}" referrerpolicy="no-referrer"><img class="card-image-zoom" src="${escapeHtml(card.image)}" alt="" aria-hidden="true" referrerpolicy="no-referrer"></div>` : '<div class="card-image card-image-placeholder"><i class="ph ph-image"></i></div>'}<div class="card-result-content"><h3>${escapeHtml(card.name)}</h3><p class="card-meta">${escapeHtml(card.number)}${card.edition ? ` · ${escapeHtml(card.edition)}` : ''}${card.rarity ? ` · ${escapeHtml(card.rarity)}` : ''}</p><div class="card-prices"><span class="card-price-low" title="Menor preço">${formatPrice(card.lowestPrice)}</span><i aria-hidden="true">·</i><span class="card-price-average" title="Preço médio">${formatPrice(card.averagePrice)}</span><i aria-hidden="true">·</i><span class="card-price-high" title="Maior preço">${formatPrice(card.highestPrice)}</span></div><button class="small-button open-card" data-index="${index}">Abrir na Liga</button></div></div></article>`).join('');
   cardResults.querySelectorAll('.open-card').forEach((button) => button.addEventListener('click', async () => {
     try { await window.pollRunner.openCard(results[Number(button.dataset.index)].url); } catch (error) { cardSearchNote.textContent = error.message; }
   }));
@@ -361,15 +488,29 @@ cardSearchForm.addEventListener('submit', async (event) => {
   cardSearchButton.disabled = true;
   cardSearchButton.textContent = 'Pesquisando';
   try {
-    const data = await window.pollRunner.searchCards(cardNumber.value);
-    renderCardResults(data.results);
+    const edition = cardSearchMode.value === 'edition' ? selectedCardEdition() : null;
+    if (edition) cardSearchButton.textContent = 'Carregando coleção';
+    const data = edition ? await window.pollRunner.searchCardEdition(edition) : await window.pollRunner.searchCards(cardNumber.value);
+    showCardResults(data.results);
   } catch (error) {
+    searchedCards = [];
+    cardFilters.hidden = true;
+    cardPagination.hidden = true;
     cardResults.innerHTML = '<div class="empty-products">Não foi possível concluir a pesquisa.</div>';
     cardSearchNote.textContent = error.message;
   } finally {
     cardSearchButton.disabled = false;
     cardSearchButton.textContent = 'Pesquisar';
   }
+});
+cardSearchMode.addEventListener('change', () => { void updateCardSearchMode(); });
+cardFilters.addEventListener('input', () => { cardPage = 1; updateCardResults(); });
+cardFilters.addEventListener('change', () => { cardPage = 1; updateCardResults(); });
+cardPagination.addEventListener('click', (event) => {
+  const button = event.target.closest('[data-card-page]');
+  if (!button) return;
+  cardPage += button.dataset.cardPage === 'next' ? 1 : -1;
+  updateCardResults();
 });
 document.addEventListener('click', (event) => {
   if (!event.target.closest('.product-menu')) closeProductMenus();

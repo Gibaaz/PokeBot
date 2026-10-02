@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { PollBot, appRoot } from './bot.js';
 import { ProductMonitor } from './product-monitor.js';
 import { amazonAsinFromUrl, copagProductCodeFromUrl, mercadoLivreCodeFromUrl, storeFromUrl } from './product-utils.js';
-import { searchLigaPokemon } from './card-search.js';
+import { listLigaPokemonEditions, searchLigaPokemon, searchLigaPokemonEdition } from './card-search.js';
 
 let configPath;
 let productsPath;
@@ -80,7 +80,7 @@ function canonicalProduct(input, existing = null) {
   const maxPrice = Number(String(input.maxPrice).replace(',', '.'));
   if (!Number.isFinite(maxPrice) || maxPrice <= 0) throw new Error('Informe um preço máximo válido.');
   const intervalMs = Number(input.intervalMs);
-  if (!Number.isFinite(intervalMs) || intervalMs < 60_000) throw new Error('Informe um intervalo de ao menos 1 minuto.');
+  if (!Number.isFinite(intervalMs) || intervalMs < 10_000) throw new Error('Informe um intervalo de ao menos 10 segundos.');
   const sellerFilter = String(input.sellerFilter || '').trim();
   const shippingInput = String(input.maxShipping ?? '').trim();
   const maxShipping = shippingInput ? Number(shippingInput.replace(',', '.')) : null;
@@ -336,6 +336,8 @@ ipcMain.handle('bot:resume', () => {
   return { state: 'running' };
 });
 ipcMain.handle('cards:search', async (_event, number) => ({ results: await searchLigaPokemon(number) }));
+ipcMain.handle('cards:editions', async () => ({ editions: await listLigaPokemonEditions() }));
+ipcMain.handle('cards:edition', async (_event, edition) => ({ results: await searchLigaPokemonEdition(edition) }));
 ipcMain.handle('cards:open', async (_event, url) => {
   const cardUrl = new URL(String(url));
   if (cardUrl.protocol !== 'https:' || cardUrl.hostname !== 'www.ligapokemon.com.br') throw new Error('Link de carta inválido.');

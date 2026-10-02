@@ -121,19 +121,53 @@
           <div class="panel-heading">
             <div>
               <h2>Consulta de cartas</h2>
-              <p class="panel-description">Pesquise o número da carta e compare os valores no marketplace da Liga Pokémon.</p>
+              <p class="panel-description">Pesquise por número ou explore coleções completas da Liga Pokémon.</p>
             </div>
           </div>
           <form class="card-search-form" id="card-search-form">
-            <label for="card-number">Número da carta</label>
+            <label for="card-search-mode">Buscar por</label>
             <div>
+              <select id="card-search-mode" aria-label="Modo de busca"><option value="number">Número da carta</option><option value="edition">Coleção</option></select>
               <input id="card-number" autocomplete="off" placeholder="Ex.: 158/128 ou TG29/TG30">
+              <input id="card-edition-query" list="card-edition-options" autocomplete="off" placeholder="Digite o nome da coleção" hidden>
+              <datalist id="card-edition-options"></datalist>
               <button class="button primary" id="card-search" type="submit">Pesquisar</button>
             </div>
-            <p class="hint">Se o número existir em mais de uma coleção, todos os resultados serão exibidos.</p>
-          </form>
-          <p class="card-search-note" id="card-search-note" aria-live="polite"></p>
-          <div class="card-results" id="card-results"><div class="empty-products">Pesquise uma carta para ver os preços da Liga Pokémon.</div></div>
+            <p class="hint" id="card-search-hint">Se o número existir em mais de uma coleção, todos os resultados serão exibidos.</p>
+           </form>
+           <p class="card-search-note" id="card-search-note" aria-live="polite"></p>
+          <details class="card-filters" id="card-filters" hidden>
+            <summary class="card-filters-heading"><strong>Filtros e ordenação</strong><span class="card-filter-summary" id="card-filter-summary" aria-live="polite"></span></summary>
+            <div class="card-filter-fields">
+              <label>Edição
+                <select id="card-edition-filter">
+                  <option value="">Todas as edições</option>
+                </select>
+              </label>
+              <label>Raridade
+                <select id="card-rarity-filter">
+                  <option value="">Todas as raridades</option>
+                </select>
+              </label>
+              <label>Menor preço a partir de
+                <input id="card-min-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="R$ 0,00">
+              </label>
+              <label>Menor preço até
+                <input id="card-max-price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Sem limite">
+              </label>
+              <label>Ordenar por
+                <select id="card-sort">
+                  <option value="lowest-asc">Menor preço</option>
+                  <option value="average-asc">Preço médio</option>
+                  <option value="highest-asc">Maior preço</option>
+                  <option value="name-asc">Nome</option>
+                </select>
+              </label>
+              <label class="card-filter-toggle"><input id="card-priced-only" type="checkbox"> Somente com preço</label>
+            </div>
+          </details>
+           <div class="card-results" id="card-results"><div class="empty-products">Pesquise uma carta para ver os preços da Liga Pokémon.</div></div>
+           <nav class="card-pagination" id="card-pagination" aria-label="Paginação de cartas" hidden></nav>
         </section>
       </section>
 
@@ -180,6 +214,7 @@
           <input id="product-url" autocomplete="off" placeholder="Link de produto da Amazon, Mercado Livre ou Copag">
           <input id="product-price" inputmode="decimal" autocomplete="off" placeholder="Preço máximo (ex.: 499,90)">
           <select id="product-interval" aria-label="Intervalo de verificação">
+            <option value="10000">A cada 10 s</option>
             <option value="60000">A cada 1 min</option>
             <option value="120000">A cada 2 min</option>
             <option value="300000">A cada 5 min</option>
